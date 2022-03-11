@@ -1,0 +1,41 @@
+{
+  "name": "pimatic-nzbget",
+  "description": "Pimatic Plugin to integrate NZBGet",
+  "author": {
+    "name": "Danny Wigmans"
+  },
+  "main": "nzbget",
+  "keywords": [
+    "Pimatic",
+    "nzbget"
+  ],
+  "version": "0.0.1",
+  "homepage": "https://github.com/sentzu01/pimatic-nzbget",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/sentzu01/pimatic-nzbget.git"
+  },
+  "license": "GPL-3.0",
+  "configSchema": "nzbget-config-schema.coffee",
+  "dependencies": {
+    "pimatic-plugin-commons": "^0.9.8",
+    "@jc21/nzbget-jsonrpc-api": "^1.0.0"
+  },
+  "optionalDependencies": {},
+  "peerDependencies": {
+    "pimatic": "0.9.*"
+  },
+  "engines": {
+    "node": ">=4",
+    "npm": ">1.1.x"
+  },
+  "bugs": {
+    "url": "https://github.com/sentzu01/pimatic-nzbget/issues"
+  },
+  "maintainers": [
+    {
+      "name": "sentzu01",
+      "email": "sentzu01@gmail.com"
+    }
+  ]
+}

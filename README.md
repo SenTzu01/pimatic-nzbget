@@ -1,1 +1,2 @@
-# pimatic-nzbget
+# pimatic-sabnzbd
+Pimatic integration with SABNZBd
