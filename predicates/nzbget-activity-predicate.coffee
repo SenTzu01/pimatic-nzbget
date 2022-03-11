@@ -12,7 +12,6 @@ module.exports = (env) ->
       @base = commons.base @, "NzbgetActivityPredicateProvider"
 
     parsePredicate: (input, context) ->
-      signals = require '../lib/sabnzbd_signals.json'
       
       devices = _(@framework.deviceManager.devices).values()
         .filter((device) => device.config.class is 'NzbgetSensor').value()
@@ -24,7 +23,7 @@ module.exports = (env) ->
         .match(['status of '])
         .matchDevice(devices, (next, d) =>   
           next.match([' is ', ' reports ', ' signals '])
-            .match(Object.values(signals), (m, s) =>
+            .match(["active", "idle", "unknown"]), (m, s) =>
               if device? and device.id isnt d.id
                 context?.addError(""""#{input.trim()}" is ambiguous.""")
                 return
