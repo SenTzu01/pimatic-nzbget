@@ -23,7 +23,7 @@ module.exports = (env) ->
         .match(['status of '])
         .matchDevice(devices, (next, d) =>   
           next.match([' is ', ' reports ', ' signals '])
-            .match(["active", "idle", "unknown"]), (m, s) =>
+            .match(["active", "idle", "unknown"], (m, s) =>
               if device? and device.id isnt d.id
                 context?.addError(""""#{input.trim()}" is ambiguous.""")
                 return
@@ -31,7 +31,7 @@ module.exports = (env) ->
               status = s.trim()
               match = m.getFullMatch()
             )
-      )
+        )
 
       if match?
         assert device?
