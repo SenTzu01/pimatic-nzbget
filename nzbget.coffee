@@ -49,9 +49,6 @@ module.exports = (env) ->
         classType = require('./predicates/' + provider)(env)
         @_base.debug "Registering predicate provider #{className}"
         @framework.ruleManager.addPredicateProvider(new classType @framework, @)
-      
-      @framework.deviceManager.on('discover', () =>
-      )
     
     _destroy: () ->
       super()

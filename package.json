@@ -9,7 +9,7 @@
     "Pimatic",
     "nzbget"
   ],
-  "version": "0.0.6",
+  "version": "0.0.7",
   "homepage": "https://github.com/sentzu01/pimatic-nzbget",
   "repository": {
     "type": "git",
@@ -18,8 +18,7 @@
   "license": "GPL-3.0",
   "configSchema": "nzbget-config-schema.coffee",
   "dependencies": {
-    "pimatic-plugin-commons": "^0.9.8",
-    "nzbget-api": "^0.0.3"
+    "pimatic-plugin-commons": "^0.9.8"
   },
   "optionalDependencies": {},
   "peerDependencies": {
