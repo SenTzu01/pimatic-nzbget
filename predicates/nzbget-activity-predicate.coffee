@@ -20,10 +20,10 @@ module.exports = (env) ->
       status = null
 
       M(input, context)
-        .match(['status of '])
+        .match(['activity of '])
         .matchDevice(devices, (next, d) =>   
           next.match([' is ', ' reports ', ' signals '])
-            .match(["active", "idle", "unknown"], (m, s) =>
+            .match(["true", "false"], (m, s) =>
               if device? and device.id isnt d.id
                 context?.addError(""""#{input.trim()}" is ambiguous.""")
                 return
@@ -47,28 +47,29 @@ module.exports = (env) ->
 
   class NzbgetActivityPredicateHandler extends env.predicates.PredicateHandler
 
-    constructor: (@device, @status, plugin) ->
+    constructor: (@device, @trigger, plugin) ->
       @debug = plugin.config.debug ? false
       @base = commons.base @, "NzbgetActivityPredicateHandler"
       @dependOnDevice(@device)
 
     setup: ->
-      @statusListener = (status) =>
-        @base.debug "Checking if current state #{status} matches #{@status}"
-        @emit 'change', true if @status is status
+      @statusListener = (activity) =>
+        activity = Boolean(activity).toString()
+        @base.debug "Checking if current activity state #{activity} matches #{@trigger}"
+        @emit('change', true) if @trigger is activity
 
-      @device.on 'status', @statusListener
+      @device.on 'active', @statusListener
       super()
 
     getValue: ->
-      @device.getUpdatedAttributeValue('status').then( (status) =>
-        return status
+      @device.getUpdatedAttributeValue('active').then( (activity) =>
+        return activity
       )
 
     destroy: ->
-      @device.removeListener 'status', @statusListener
+      @device.removeListener 'active', @statusListener
       super()
 
-    getType: -> 'status'
+    getType: -> 'active'
     
   return NzbgetActivityPredicateProvider

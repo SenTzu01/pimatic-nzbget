@@ -14,13 +14,35 @@ module.exports = (env) ->
       @id = @config.id
       @name = @config.name
       
-      @addAttribute 'status',
+      @addAttribute 'active',
         description: "NZBGet server status",
-        type: t.string
+        type: t.boolean
         discrete: true
-        acronym: "Status"
+        acronym: "Active"
       
-      @_status = lastState?.status?.value || "unknown"
+      @addAttribute 'downloading',
+        description: "NZBGet download status",
+        type: t.boolean
+        discrete: true
+        acronym: "Downloading"
+        
+      @addAttribute 'processing',
+        description: "NZBGet post-processing status",
+        type: t.boolean
+        discrete: true
+        acronym: "Processing"
+      
+      @addAttribute 'speed',
+        description: "NZBGet download speed",
+        type: t.number
+        discrete: false
+        acronym: "Speed"
+        unit: "MB/s"
+      
+      @_active = lastState?.active?.value || false
+      @_downloading = lastState?.downloading?.value || false
+      @_processing = lastState?.processing?.value || false
+      @_speed = lastState?.speed?.value || 0
       
       super()
       
@@ -30,15 +52,24 @@ module.exports = (env) ->
         login: @config.username
         hash: @config.password
       })
+      
       @_pullUpdatesTimeout = null
       process.nextTick(@_pullUpdates)
     
-    getStatus: () => Promise.resolve(@_activity)
-    
+    getActive: () => Promise.resolve(@_active)
+    getDownloading: () => Promise.resolve(@_downloading)
+    getProcessing: () => Promise.resolve(@_processing)
+    getSpeed: () => Promise.resolve(@_speed)
     
     _pullUpdates: () =>
-      @retrieveStatus().finally( () =>
-        @_pullUpdatesTimeout = setTimeout(@_pullUpdates, Math.round(@config.interval) * 1000)
+      timeoutMs = (s) -> return Math.round(s) * 1000
+      timeout = timeoutMs(@config.interval)
+      
+      @retrieveStatus().catch( (error) =>
+        timeout = timeoutMs(60)
+      
+      ).finally( () =>
+        @_pullUpdatesTimeout = setTimeout(@_pullUpdates, timeout)
       )
     
     retrieveStatus: () =>
@@ -48,22 +79,31 @@ module.exports = (env) ->
         @_server.status( (error, json) =>
           if error?
             @_base.error(error)
-            @_setStatus("unknown")
-            @_setPresence(false)
+            [ "presence", 
+              "active", 
+              "downloading", 
+              "processing"
+            ].map( (property) -> @_setProperty(property, false))
+            @_setProperty("speed", 0)
+
             return reject(error)
           
           @_base.debug __("JSON response: " + util.inspect(json))
           @_setPresence(true)
-          @_setStatus(json.ServerStandBy && "idle" || "active")
-          resolve()
+          @_setProperty("active", json.DownloadRate > 0 || json.PostJobCount > 0 )
+          @_setProperty("downloading", json.DownloadRate > 0)
+          @_setProperty("processing", json.PostJobCount > 0)
+          @_setProperty("speed", json.DownloadRate / (1024*1024))
+          
+          return resolve()
         )
       )
     
-    _setStatus: (status) =>
-      return if @_activity is status
-      @_base.debug __("status: %s", status)
-      @_activity = status
-      @emit('status', status)
+    _setProperty: (key, value) =>
+      return if @["_#{key}"] is value
+      @_base.debug __("@_#{key}: %s", value)
+      @["_#{key}"] = value
+      @emit(key, value)
     
     destroy: () ->
       clearTimeout(@_pullUpdatesTimeout)
