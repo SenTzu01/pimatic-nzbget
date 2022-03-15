@@ -3,7 +3,7 @@ module.exports = (env) ->
   Promise = env.require 'bluebird'
   commons = require('pimatic-plugin-commons')(env)
   t = env.require('decl-api').types
-  nzbget = require('@jc21/nzbget-jsonrpc-api').Client
+  nzbget = require('nzbget-api')
   util = require('util')
   
   class NzbgetSensor extends env.devices.PresenceSensor
@@ -15,7 +15,7 @@ module.exports = (env) ->
       @name = @config.name
       
       @addAttribute 'status',
-        description: "NZBGet status status",
+        description: "NZBGet server status",
         type: t.string
         discrete: true
         acronym: "Status"
@@ -23,41 +23,40 @@ module.exports = (env) ->
       @_status = lastState?.status?.value || "unknown"
       
       super()
-      @_status = {
-        Idle: "idle"
-        Active: "active"
-        Unknown: "Unknown"
-      }
       
-      url = "http://#{@config.user}:#{@config.password}@#{@config.address}:#{@config.port}/jsonrpc"
-      @_server = new nzbget(url)
+      @_server = new nzbget({
+        host: @config.address
+        port: @config.port
+        login: @config.username
+        hash: @config.password
+      })
       @_pullUpdatesTimeout = null
-      @_pullUpdates()
-      
+      process.nextTick(@_pullUpdates)
     
     getStatus: () => Promise.resolve(@_activity)
     
     
     _pullUpdates: () =>
-      @retrieveStatus()
-      @_pullUpdatesTimeout = setTimeout(@_pullUpdates, Math.round(@config.interval) * 1000)
+      @retrieveStatus().finally( () =>
+        @_pullUpdatesTimeout = setTimeout(@_pullUpdates, Math.round(@config.interval) * 1000)
+      )
     
     retrieveStatus: () =>
-      presence = false
-      state = "unknown"
-      @_server.status().then( (status) =>
-        @_base.debug __("nzbget.status: " + util.inspect(status))
-        presence = true
-        state = "active"
-        state = "idle" if status.ServerStandBy
-        
-      ).catch( (error) =>
+      return new Promise( (resolve, reject) =>
         presence = false
         state = "unknown"
-      
-      ).finally( () =>
-        @_setPresence(presence)
-        @_setStatus(state)
+        @_server.status( (error, json) =>
+          if error?
+            @_base.error(error)
+            @_setStatus("unknown")
+            @_setPresence(false)
+            return reject(error)
+          
+          @_base.debug __("JSON response: " + util.inspect(json))
+          @_setPresence(true)
+          @_setStatus(json.ServerStandBy && "idle" || "active")
+          resolve()
+        )
       )
     
     _setStatus: (status) =>
