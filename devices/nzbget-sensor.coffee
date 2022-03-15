@@ -3,14 +3,15 @@ module.exports = (env) ->
   Promise = env.require 'bluebird'
   commons = require('pimatic-plugin-commons')(env)
   t = env.require('decl-api').types
-  nzbget = require('nzbget-api')
   util = require('util')
+  http = require('http')
   
   class NzbgetSensor extends env.devices.PresenceSensor
 
     constructor: (@config, @_plugin, lastState) ->
       @_base = commons.base @, @config.class
       @debug = @_plugin.debug || false
+      
       @id = @config.id
       @name = @config.name
       
@@ -46,13 +47,6 @@ module.exports = (env) ->
       
       super()
       
-      @_server = new nzbget({
-        host: @config.address
-        port: @config.port
-        login: @config.username
-        hash: @config.password
-      })
-      
       @_pullUpdatesTimeout = null
       process.nextTick(@_pullUpdates)
     
@@ -75,9 +69,22 @@ module.exports = (env) ->
     retrieveStatus: () =>
       return new Promise( (resolve, reject) =>
         presence = false
-        state = "unknown"
-        @_server.status( (error, json) =>
+        url  = __("http://%s:%s@%s:%s/jsonrpc/status", 
+                  @config.username, 
+                  @config.password, 
+                  @config.address, 
+                  @config.port
+        )
+        
+        http.get(url, (res) =>
+          if ! /^application\/json/.test(res.headers['content-type'])
+            error = new Error("Invalid Content Type. content-type: #{res.headers['content-type']}")
+          
+          if res.statusCode != 200
+            error = new Error("Request failed. status code: #{statusCode}")
+          
           if error?
+            res.resume()
             @_base.error(error)
             [ "presence", 
               "active", 
@@ -85,17 +92,30 @@ module.exports = (env) ->
               "processing"
             ].map( (property) -> @_setProperty(property, false))
             @_setProperty("speed", 0)
-
-            return reject(error)
+            reject()
           
-          @_base.debug __("JSON response: " + util.inspect(json))
-          @_setPresence(true)
-          @_setProperty("active", json.DownloadRate > 0 || json.PostJobCount > 0 )
-          @_setProperty("downloading", json.DownloadRate > 0)
-          @_setProperty("processing", json.PostJobCount > 0)
-          @_setProperty("speed", json.DownloadRate / (1024*1024))
+          rawData = ''
           
-          return resolve()
+          res.setEncoding('utf8')
+          res.on('error', (error) =>
+            @_base.error(error)
+            reject()
+          
+          )
+          res.on('data', (data) =>
+            rawData += data
+          
+          )
+          res.on('end', () =>
+            json = JSON.parse(rawData).result
+            @_base.debug __("JSON response: " + util.inspect(json))
+            @_setPresence(true)
+            @_setProperty("active", json.DownloadRate > 0 || json.PostJobCount > 0 )
+            @_setProperty("downloading", json.DownloadRate > 0)
+            @_setProperty("processing", json.PostJobCount > 0)
+            @_setProperty("speed", json.DownloadRate / (1024*1024))
+            resolve()
+          )
         )
       )
     
