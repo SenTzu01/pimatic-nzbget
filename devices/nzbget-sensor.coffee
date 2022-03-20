@@ -108,7 +108,7 @@ module.exports = (env) ->
           )
           res.on('end', () =>
             json = JSON.parse(rawData).result
-            @_base.debug __("JSON response: " + util.inspect(json))
+            @_base.debug __("JSON response: " + util.inspect(json)) if @debug
             @_setPresence(true)
             @_setProperty("active", json.DownloadRate > 0 || json.PostJobCount > 0 )
             @_setProperty("downloading", json.DownloadRate > 0)

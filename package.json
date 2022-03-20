@@ -9,7 +9,7 @@
     "Pimatic",
     "nzbget"
   ],
-  "version": "0.0.7",
+  "version": "0.0.8",
   "homepage": "https://github.com/sentzu01/pimatic-nzbget",
   "repository": {
     "type": "git",
